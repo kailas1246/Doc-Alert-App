@@ -10,7 +10,7 @@ const Login = ({ onLogin }) => {
   function handleSubmit(e) {
     e.preventDefault()
     // credentials expected: id = adim123, password = adim123
-    if (user === 'Qcrete@gamil.com' && pass === 'Qcrete123') {
+    if (user === 'Gopanint@gamil.com' && pass === 'gopanint@123') {
       localStorage.setItem('docAlert_auth', '1')
       onLogin && onLogin()
       navigate('/')
