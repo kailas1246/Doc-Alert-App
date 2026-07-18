@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { jsPDF } from 'jspdf'
 import { getDocs, addDoc, updateDoc, deleteDoc } from '../lib/storage'
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4000/api'
 import EmailModal from './EmailModal'
@@ -12,7 +13,14 @@ function daysLeft(expiryISO) {
 
 const Dashboard = () => {
   const [docs, setDocs] = useState([])
-  const [form, setForm] = useState({ name: '', type: 'Other', expiry: '', email: '' })
+  const [form, setForm] = useState({
+    name: "",
+    type: "Other",
+    expiry: "",
+    alertDaysBefore: 5,
+    alertTime: "09:00",
+    email: ""
+});
   const [editingId, setEditingId] = useState(null)
   const [query, setQuery] = useState('')
   const [emailOpen, setEmailOpen] = useState(false)
@@ -114,6 +122,80 @@ const Dashboard = () => {
     // removed: send button handled via Gmail compose; function kept for backward compatibility
   }
 
+  function exportPdf() {
+    const exportDocs = filtered.length ? filtered : docs
+    if (!exportDocs.length) {
+      alert('No documents available to export.')
+      return
+    }
+
+    const pdf = new jsPDF()
+    const left = 14
+    const pageWidth = pdf.internal.pageSize.getWidth()
+    const pageHeight = pdf.internal.pageSize.getHeight()
+    const colX = [left, 88, 146]
+    const colWidth = [70, 50, 44]
+    const lineHeight = 7
+    const bottomMargin = 20
+    let y = 20
+
+    const drawHeader = () => {
+      pdf.setFontSize(14)
+      pdf.setFont(undefined, 'bold')
+      pdf.text('Doc Alert Export', left, y)
+      y += 10
+      pdf.setFontSize(12)
+      const cols = ['Name', 'Expiry status', 'Days for expiry']
+      cols.forEach((col, idx) => pdf.text(col, colX[idx], y))
+      y += 6
+      pdf.setLineWidth(0.5)
+      pdf.line(left, y, pageWidth - left, y)
+      y += 8
+      pdf.setFont(undefined, 'normal')
+    }
+
+    drawHeader()
+
+    exportDocs.forEach((d, index) => {
+      const dl = daysLeft(d.expiry)
+      const status = dl < 0 ? 'Expired' : dl === 0 ? 'Expires today' : 'Active'
+      const daysText = dl < 0 ? `${Math.abs(dl)} day${Math.abs(dl) === 1 ? '' : 's'} ago` : `${dl} day${dl === 1 ? '' : 's'}`
+
+      const nameLines = pdf.splitTextToSize(String(d.name), colWidth[0])
+      const statusLines = pdf.splitTextToSize(status, colWidth[1])
+      const daysLines = pdf.splitTextToSize(daysText, colWidth[2])
+      const rowHeight = Math.max(nameLines.length, statusLines.length, daysLines.length) * lineHeight
+
+      if (y + rowHeight + bottomMargin > pageHeight) {
+        pdf.addPage()
+        y = 20
+        drawHeader()
+      }
+
+      const maxLines = Math.max(nameLines.length, statusLines.length, daysLines.length)
+      for (let lineIndex = 0; lineIndex < maxLines; lineIndex += 1) {
+        const lineY = y + lineHeight * lineIndex
+        const nameLine = nameLines[lineIndex] || ''
+        const statusLine = statusLines[lineIndex] || ''
+        const daysLine = daysLines[lineIndex] || ''
+        pdf.text(nameLine, colX[0], lineY)
+        pdf.text(statusLine, colX[1], lineY)
+        pdf.text(daysLine, colX[2], lineY)
+      }
+
+      y += rowHeight
+      if (index < exportDocs.length - 1) {
+        pdf.setDrawColor(200)
+        pdf.setLineWidth(0.2)
+        pdf.line(left, y - 3, pageWidth - left, y - 3)
+        pdf.setDrawColor(0)
+      }
+      y += 4
+    })
+
+    pdf.save('doc-alert-export.pdf')
+  }
+
   const filtered = docs.filter(d => d.name.toLowerCase().includes(query.toLowerCase()) || d.type.toLowerCase().includes(query.toLowerCase()))
 
   return (
@@ -161,8 +243,11 @@ const Dashboard = () => {
                 setEmailData({ to: '', subject: 'Documents expiring soon', body: `Expiring documents:\n\n${body}` })
                 setEmailOpen(true)
               }}>Compose Alert</button>
+              <button className="px-3 py-2 bg-indigo-600 text-white rounded" onClick={exportPdf}>Export PDF</button>
             </div>
           </div>
+
+          
 
           <div className="overflow-x-auto">
             <table className="w-full text-left">
