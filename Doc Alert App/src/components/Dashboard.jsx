@@ -133,8 +133,8 @@ const Dashboard = () => {
     const left = 14
     const pageWidth = pdf.internal.pageSize.getWidth()
     const pageHeight = pdf.internal.pageSize.getHeight()
-    const colX = [left, 88, 146]
-    const colWidth = [70, 50, 44]
+    const colX = [left, 84, 126, 168]
+    const colWidth = [64, 36, 38, 36]
     const lineHeight = 7
     const bottomMargin = 20
     let y = 20
@@ -145,7 +145,7 @@ const Dashboard = () => {
       pdf.text('Doc Alert Export', left, y)
       y += 10
       pdf.setFontSize(12)
-      const cols = ['Name', 'Expiry status', 'Days for expiry']
+      const cols = ['Name', 'Expiry date', 'Expiry status', 'Days for expiry']
       cols.forEach((col, idx) => pdf.text(col, colX[idx], y))
       y += 6
       pdf.setLineWidth(0.5)
@@ -162,9 +162,10 @@ const Dashboard = () => {
       const daysText = dl < 0 ? `${Math.abs(dl)} day${Math.abs(dl) === 1 ? '' : 's'} ago` : `${dl} day${dl === 1 ? '' : 's'}`
 
       const nameLines = pdf.splitTextToSize(String(d.name), colWidth[0])
-      const statusLines = pdf.splitTextToSize(status, colWidth[1])
-      const daysLines = pdf.splitTextToSize(daysText, colWidth[2])
-      const rowHeight = Math.max(nameLines.length, statusLines.length, daysLines.length) * lineHeight
+      const expiryLines = pdf.splitTextToSize(String(d.expiry), colWidth[1])
+      const statusLines = pdf.splitTextToSize(status, colWidth[2])
+      const daysLines = pdf.splitTextToSize(daysText, colWidth[3])
+      const rowHeight = Math.max(nameLines.length, expiryLines.length, statusLines.length, daysLines.length) * lineHeight
 
       if (y + rowHeight + bottomMargin > pageHeight) {
         pdf.addPage()
@@ -172,15 +173,17 @@ const Dashboard = () => {
         drawHeader()
       }
 
-      const maxLines = Math.max(nameLines.length, statusLines.length, daysLines.length)
+      const maxLines = Math.max(nameLines.length, expiryLines.length, statusLines.length, daysLines.length)
       for (let lineIndex = 0; lineIndex < maxLines; lineIndex += 1) {
         const lineY = y + lineHeight * lineIndex
         const nameLine = nameLines[lineIndex] || ''
+        const expiryLine = expiryLines[lineIndex] || ''
         const statusLine = statusLines[lineIndex] || ''
         const daysLine = daysLines[lineIndex] || ''
         pdf.text(nameLine, colX[0], lineY)
-        pdf.text(statusLine, colX[1], lineY)
-        pdf.text(daysLine, colX[2], lineY)
+        pdf.text(expiryLine, colX[1], lineY)
+        pdf.text(statusLine, colX[2], lineY)
+        pdf.text(daysLine, colX[3], lineY)
       }
 
       y += rowHeight
